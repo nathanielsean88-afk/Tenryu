@@ -1,37 +1,46 @@
-// middleware.ts
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
+import { getMemberByClerkId, getApplications } from '@/lib/storage'
 
 const isPublicRoute = createRouteMatcher([
   '/',
   '/login(.*)',
   '/register(.*)',
   '/gallery(.*)',
-  '/pendaftaran(.*)',
+  '/menunggu(.*)',
   '/api/webhooks(.*)',
+  '/api/applications',
 ])
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)'])
+const isMemberRoute = createRouteMatcher(['/member(.*)'])
 
 export default clerkMiddleware(async (auth, req) => {
-  const { userId, sessionClaims } = await auth()
+  const { userId } = await auth()
 
-  // Allow public routes
   if (isPublicRoute(req)) return NextResponse.next()
 
-  // Require auth for everything else
   if (!userId) {
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('redirect_url', req.url)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Admin routes: check role in Clerk metadata
+  // Baca role langsung dari JSON storage (bukan sessionClaims)
+  const member = getMemberByClerkId(userId)
+  const role = member?.role ?? null
+
+  // Admin routes
   if (isAdminRoute(req)) {
-    const role = (sessionClaims?.metadata as { role?: string })?.role
-    if (role !== 'ADMIN') {
-      return NextResponse.redirect(new URL('/member', req.url))
-    }
+    if (role !== 'ADMIN') return NextResponse.redirect(new URL('/menunggu', req.url))
+    return NextResponse.next()
+  }
+
+  // Member routes
+  if (isMemberRoute(req)) {
+    if (role === 'ADMIN') return NextResponse.next()
+    if (role !== 'MEMBER') return NextResponse.redirect(new URL('/menunggu', req.url))
+    return NextResponse.next()
   }
 
   return NextResponse.next()

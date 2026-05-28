@@ -6,28 +6,41 @@ import { randomUUID } from 'crypto'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { firstName, lastName, email, phone, birthDate, city, profession, institution, division, motivation, contribution, referral, portfolio } = body
+    const { ccSebelumnya, alasanKeluar, alasanMasuk, tiktok, discord, whatsapp, umur, asalKota } = body
 
-    if (!firstName || !lastName || !email || !division || !motivation) {
+    if (!alasanMasuk || !whatsapp || !discord) {
       return NextResponse.json({ error: 'Field wajib belum lengkap' }, { status: 400 })
     }
 
-    const existing = getApplications().find(a => a.email === email)
-    if (existing) return NextResponse.json({ error: 'Email sudah pernah mendaftar' }, { status: 409 })
-
     const { userId } = await auth()
+
+    const existing = userId ? getApplications().find(a => (a as any).userId === userId) : null
+    if (existing) return NextResponse.json({ error: 'Kamu sudah pernah mendaftar' }, { status: 409 })
+
     const app = {
       id: randomUUID(),
-      firstName, lastName, email, phone: phone ?? '', birthDate: birthDate ?? '',
-      city: city ?? '', profession: profession ?? '', institution: institution ?? '',
-      division, motivation, contribution: contribution ?? '', referral: referral ?? '',
-      portfolio: portfolio ?? '', status: 'PENDING' as const,
-      adminNote: '', reviewedBy: '', reviewedAt: '',
+      ccSebelumnya: ccSebelumnya ?? '-',
+      alasanKeluar: alasanKeluar ?? '-',
+      alasanMasuk,
+      tiktok: tiktok ?? '',
+      discord,
+      whatsapp,
+      umur: umur ?? '',
+      asalKota: asalKota ?? '',
+      status: 'PENDING' as const,
+      adminNote: '',
+      reviewedBy: '',
+      reviewedAt: '',
       createdAt: new Date().toISOString(),
       userId: userId ?? '',
+      // legacy fields biar tidak error
+      firstName: '', lastName: '', email: '', phone: whatsapp,
+      birthDate: '', city: asalKota ?? '', profession: '',
+      institution: '', division: 'GENERAL', motivation: alasanMasuk,
+      contribution: '', referral: '', portfolio: '',
     }
 
-    saveApplication(app)
+    saveApplication(app as any)
     return NextResponse.json({ success: true, id: app.id }, { status: 201 })
   } catch (err) {
     console.error(err)
