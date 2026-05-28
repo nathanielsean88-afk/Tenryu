@@ -1,9 +1,10 @@
-// app/member/profile/page.tsx
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
 import { getOrCreateUser } from '@/lib/auth'
+import { getApplications } from '@/lib/storage'
 import ProfileClient from './ProfileClient'
+
+export const dynamic = 'force-dynamic'
 
 export default async function ProfilePage() {
   const { userId } = await auth()
@@ -12,9 +13,7 @@ export default async function ProfilePage() {
   const user = await getOrCreateUser()
   if (!user) redirect('/login')
 
-  const application = await prisma.application.findFirst({
-    where: { userId: user.id },
-  })
+  const application = getApplications().find(a => (a as any).userId === userId) ?? null
 
   return <ProfileClient user={user} application={application} />
 }

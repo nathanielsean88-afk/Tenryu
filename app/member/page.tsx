@@ -1,9 +1,10 @@
-// app/member/page.tsx
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
 import { getOrCreateUser } from '@/lib/auth'
+import { getAnnouncements, getMembers } from '@/lib/storage'
 import MemberDashboardClient from './MemberDashboardClient'
+
+export const dynamic = 'force-dynamic'
 
 export default async function MemberPage() {
   const { userId } = await auth()
@@ -11,30 +12,11 @@ export default async function MemberPage() {
 
   const user = await getOrCreateUser()
   if (!user) redirect('/login')
-
-  // If admin, redirect to admin panel
   if (user.role === 'ADMIN') redirect('/admin')
 
-  const announcements = await prisma.announcement.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 5,
-  })
+  const announcements = getAnnouncements().slice(0, 5)
+  const members = getMembers().filter(m => m.role === 'MEMBER').slice(0, 6)
+  const totalMembers = getMembers().filter(m => m.role === 'MEMBER').length
 
-  const members = await prisma.user.findMany({
-    where: { role: 'MEMBER' },
-    orderBy: { joinedAt: 'desc' },
-    take: 6,
-    select: { id: true, name: true, imageUrl: true, division: true },
-  })
-
-  const totalMembers = await prisma.user.count({ where: { role: 'MEMBER' } })
-
-  return (
-    <MemberDashboardClient
-      user={user}
-      announcements={announcements}
-      members={members}
-      totalMembers={totalMembers}
-    />
-  )
+  return <MemberDashboardClient user={user} announcements={announcements} members={members} totalMembers={totalMembers} />
 }

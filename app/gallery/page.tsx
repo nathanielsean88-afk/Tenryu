@@ -1,21 +1,11 @@
-// app/gallery/page.tsx
-import { prisma } from '@/lib/prisma'
+import { getMembers } from '@/lib/storage'
 import Navbar from '@/components/layout/Navbar'
 import GalleryClient from './GalleryClient'
 
-export const revalidate = 60 // revalidate every minute
+export const dynamic = 'force-dynamic'
 
-export default async function GalleryPage() {
-  const members = await prisma.user.findMany({
-    where: { role: 'MEMBER' },
-    orderBy: { joinedAt: 'desc' },
-    select: {
-      id: true, name: true, imageUrl: true,
-      division: true, bio: true, joinedAt: true,
-      application: { select: { profession: true, institution: true, portfolio: true } },
-    },
-  })
-
+export default function GalleryPage() {
+  const members = getMembers().filter(m => m.role === 'MEMBER')
   return (
     <>
       <div className="noise-overlay" />

@@ -1,22 +1,19 @@
-// app/admin/page.tsx
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
 import { isAdmin } from '@/lib/auth'
+import { getApplications, getMembers, getAnnouncements } from '@/lib/storage'
 import AdminClient from './AdminClient'
+
+export const dynamic = 'force-dynamic'
 
 export default async function AdminPage() {
   const { userId } = await auth()
   if (!userId) redirect('/login')
   if (!(await isAdmin())) redirect('/member')
 
-  const [applications, members, announcements] = await Promise.all([
-    prisma.application.findMany({
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.user.findMany({ where: { role: 'MEMBER' }, orderBy: { joinedAt: 'desc' } }),
-    prisma.announcement.findMany({ orderBy: { createdAt: 'desc' } }),
-  ])
+  const applications = getApplications()
+  const members = getMembers().filter(m => m.role === 'MEMBER')
+  const announcements = getAnnouncements()
 
   const stats = {
     total: members.length,
